@@ -1,0 +1,1762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Forgotten Archive</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #0a0908;
+            --bg-dark: #141210;
+            --bg-panel: #1a1816;
+            --text-primary: #e8e4dc;
+            --text-dim: #8a8378;
+            --accent-gold: #c9a227;
+            --accent-amber: #d4a84b;
+            --accent-crimson: #8b2942;
+            --accent-teal: #2d5a5a;
+            --glow-gold: rgba(201, 162, 39, 0.4);
+            --glow-crimson: rgba(139, 41, 66, 0.5);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Crimson Text', Georgia, serif;
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Atmospheric background */
+        .atmosphere {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .atmosphere::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(ellipse at 20% 80%, rgba(139, 41, 66, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(45, 90, 90, 0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(201, 162, 39, 0.03) 0%, transparent 70%);
+        }
+
+        .atmosphere::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+            opacity: 0.03;
+            mix-blend-mode: overlay;
+        }
+
+        /* Title Screen */
+        #title-screen {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            padding: 2rem;
+            animation: fadeIn 1.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .title-main {
+            font-family: 'Cinzel', serif;
+            font-size: clamp(2.5rem, 8vw, 5rem);
+            font-weight: 700;
+            color: var(--text-primary);
+            text-shadow: 0 0 60px var(--glow-gold), 0 2px 4px rgba(0,0,0,0.8);
+            margin-bottom: 0.5rem;
+            letter-spacing: 0.1em;
+        }
+
+        .title-sub {
+            font-size: 1.1rem;
+            color: var(--text-dim);
+            font-style: italic;
+            margin-bottom: 3rem;
+            letter-spacing: 0.2em;
+        }
+
+        .title-tagline {
+            font-size: 0.9rem;
+            color: var(--accent-gold);
+            opacity: 0.8;
+            margin-bottom: 4rem;
+            max-width: 500px;
+        }
+
+        .start-btn {
+            font-family: 'Cinzel', serif;
+            font-size: 1.1rem;
+            padding: 1rem 3rem;
+            background: transparent;
+            border: 1px solid var(--accent-gold);
+            color: var(--accent-gold);
+            cursor: pointer;
+            letter-spacing: 0.3em;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .start-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, var(--glow-gold), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .start-btn:hover {
+            background: rgba(201, 162, 39, 0.1);
+            box-shadow: 0 0 30px var(--glow-gold);
+            text-shadow: 0 0 10px var(--accent-gold);
+        }
+
+        .start-btn:hover::before {
+            left: 100%;
+        }
+
+        /* Game UI */
+        #game-ui {
+            display: none;
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            height: 100%;
+            padding: 1rem;
+        }
+
+        #game-canvas {
+            background: var(--bg-dark);
+            border: 1px solid rgba(201, 162, 39, 0.2);
+            box-shadow: 0 0 60px rgba(0, 0, 0, 0.5), inset 0 0 100px rgba(0, 0, 0, 0.3);
+        }
+
+        /* HUD */
+        .hud {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            right: 1rem;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        .hud-panel {
+            background: rgba(20, 18, 16, 0.9);
+            border: 1px solid rgba(201, 162, 39, 0.3);
+            padding: 0.8rem 1.2rem;
+            min-width: 150px;
+        }
+
+        .hud-label {
+            font-family: 'Cinzel', serif;
+            font-size: 0.7rem;
+            color: var(--accent-gold);
+            letter-spacing: 0.2em;
+            margin-bottom: 0.3rem;
+        }
+
+        .hud-value {
+            font-size: 1.1rem;
+            color: var(--text-primary);
+        }
+
+        .health-bar {
+            width: 120px;
+            height: 8px;
+            background: var(--bg-deep);
+            border: 1px solid rgba(138, 131, 120, 0.3);
+            margin-top: 0.4rem;
+        }
+
+        .health-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-crimson), #a83255);
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px var(--glow-crimson);
+        }
+
+        .knowledge-markers {
+            display: flex;
+            gap: 4px;
+            margin-top: 0.4rem;
+        }
+
+        .knowledge-dot {
+            width: 12px;
+            height: 12px;
+            border: 1px solid var(--accent-teal);
+            background: transparent;
+            transition: all 0.3s ease;
+        }
+
+        .knowledge-dot.found {
+            background: var(--accent-teal);
+            box-shadow: 0 0 8px var(--accent-teal);
+        }
+
+        /* Lore Panel */
+        #lore-panel {
+            position: absolute;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(20, 18, 16, 0.95);
+            border: 1px solid rgba(201, 162, 39, 0.3);
+            padding: 1rem 2rem;
+            max-width: 600px;
+            text-align: center;
+            display: none;
+            z-index: 20;
+        }
+
+        #lore-panel.active {
+            display: block;
+            animation: loreIn 0.5s ease-out;
+        }
+
+        @keyframes loreIn {
+            from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+
+        .lore-title {
+            font-family: 'Cinzel', serif;
+            font-size: 0.9rem;
+            color: var(--accent-gold);
+            letter-spacing: 0.2em;
+            margin-bottom: 0.5rem;
+        }
+
+        .lore-text {
+            font-size: 1rem;
+            line-height: 1.6;
+            color: var(--text-primary);
+            font-style: italic;
+        }
+
+        .lore-text.secret {
+            color: var(--accent-crimson);
+        }
+
+        /* Controls display */
+        .controls-hint {
+            position: absolute;
+            bottom: 1rem;
+            right: 1rem;
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            text-align: right;
+            line-height: 1.6;
+        }
+
+        .key {
+            display: inline-block;
+            padding: 0.1rem 0.4rem;
+            background: rgba(201, 162, 39, 0.15);
+            border: 1px solid rgba(201, 162, 39, 0.3);
+            font-family: 'Cinzel', serif;
+            font-size: 0.7rem;
+            margin: 0 0.1rem;
+        }
+
+        /* Message/notification system */
+        #message-display {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            pointer-events: none;
+            z-index: 30;
+        }
+
+        .message {
+            font-family: 'Cinzel', serif;
+            font-size: 1rem;
+            color: var(--accent-gold);
+            text-shadow: 0 0 20px var(--glow-gold);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            letter-spacing: 0.1em;
+        }
+
+        .message.show {
+            opacity: 1;
+        }
+
+        /* Achievement popup */
+        #achievement-popup {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(20, 18, 16, 0.98);
+            border: 2px solid var(--accent-gold);
+            padding: 2rem 3rem;
+            text-align: center;
+            display: none;
+            z-index: 40;
+            box-shadow: 0 0 60px var(--glow-gold);
+        }
+
+        #achievement-popup.show {
+            display: block;
+            animation: achievementIn 0.5s ease-out;
+        }
+
+        @keyframes achievementIn {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+            50% { transform: translate(-50%, -50%) scale(1.05); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+
+        .achievement-title {
+            font-family: 'Cinzel', serif;
+            font-size: 1.3rem;
+            color: var(--accent-gold);
+            letter-spacing: 0.2em;
+            margin-bottom: 0.5rem;
+        }
+
+        .achievement-desc {
+            font-size: 1rem;
+            color: var(--text-primary);
+        }
+
+        /* Pause menu */
+        #pause-menu {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 9, 8, 0.95);
+            z-index: 50;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #pause-menu.show {
+            display: flex;
+        }
+
+        .pause-title {
+            font-family: 'Cinzel', serif;
+            font-size: 2.5rem;
+            color: var(--accent-gold);
+            letter-spacing: 0.3em;
+            margin-bottom: 3rem;
+        }
+
+        .pause-option {
+            font-family: 'Crimson Text', serif;
+            font-size: 1.2rem;
+            color: var(--text-dim);
+            padding: 0.8rem 2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            letter-spacing: 0.1em;
+        }
+
+        .pause-option:hover {
+            color: var(--text-primary);
+            text-shadow: 0 0 10px var(--glow-gold);
+        }
+
+        /* End screen */
+        #end-screen {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-deep);
+            z-index: 50;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        #end-screen.show {
+            display: flex;
+        }
+
+        .end-title {
+            font-family: 'Cinzel', serif;
+            font-size: 2rem;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            letter-spacing: 0.2em;
+        }
+
+        .end-subtitle {
+            font-size: 1.1rem;
+            color: var(--text-dim);
+            font-style: italic;
+            margin-bottom: 2rem;
+        }
+
+        .end-stats {
+            margin-bottom: 2rem;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            width: 300px;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(138, 131, 120, 0.2);
+        }
+
+        .stat-label {
+            color: var(--text-dim);
+        }
+
+        .stat-value {
+            color: var(--accent-gold);
+            font-family: 'Cinzel', serif;
+        }
+
+        /* Minimap */
+        #minimap {
+            position: absolute;
+            top: 4rem;
+            right: 1rem;
+            width: 120px;
+            height: 120px;
+            background: rgba(20, 18, 16, 0.8);
+            border: 1px solid rgba(201, 162, 39, 0.3);
+            z-index: 20;
+        }
+
+        #minimap canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .title-main {
+                font-size: 2rem;
+            }
+            
+            #game-canvas {
+                width: 100%;
+                height: auto;
+            }
+            
+            .controls-hint {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="atmosphere"></div>
+    
+    <!-- Title Screen -->
+    <div id="title-screen">
+        <h1 class="title-main">The Forgotten Archive</h1>
+        <p class="title-sub">A Lore of Shadows</p>
+        <p class="title-tagline">The empire burned its own history. You must uncover why.</p>
+        <button class="start-btn" onclick="startGame()">ENTER THE ARCHIVE</button>
+    </div>
+
+    <!-- Game UI -->
+    <div id="game-ui">
+        <div class="hud">
+            <div class="hud-panel">
+                <div class="hud-label">VITALITY</div>
+                <div class="health-bar">
+                    <div class="health-fill" id="health-fill"></div>
+                </div>
+            </div>
+            <div class="hud-panel" style="text-align: right;">
+                <div class="hud-label">KNOWLEDGE</div>
+                <div class="knowledge-markers" id="knowledge-markers"></div>
+            </div>
+        </div>
+
+        <canvas id="game-canvas"></canvas>
+        
+        <div id="minimap">
+            <canvas id="minimap-canvas"></canvas>
+        </div>
+
+        <div id="message-display">
+            <div class="message" id="message"></div>
+        </div>
+
+        <div id="lore-panel">
+            <div class="lore-title" id="lore-title"></div>
+            <div class="lore-text" id="lore-text"></div>
+        </div>
+
+        <div id="achievement-popup">
+            <div class="achievement-title" id="achievement-title"></div>
+            <div class="achievement-desc" id="achievement-desc"></div>
+        </div>
+
+        <div class="controls-hint">
+            <span class="key">WASD</span> Move<br>
+            <span class="key">SPACE</span> Interact<br>
+            <span class="key">E</span> Attack<br>
+            <span class="key">ESC</span> Menu
+        </div>
+
+        <div id="pause-menu">
+            <div class="pause-title">PAUSED</div>
+            <div class="pause-option" onclick="resumeGame()">Resume</div>
+            <div class="pause-option" onclick="showLore()">View Discoveries</div>
+            <div class="pause-option" onclick="restartGame()">New Archive</div>
+        </div>
+    </div>
+
+    <!-- End Screen -->
+    <div id="end-screen">
+        <div class="end-title" id="end-title"></div>
+        <div class="end-subtitle" id="end-subtitle"></div>
+        <div class="end-stats">
+            <div class="stat-row">
+                <span class="stat-label">Lore Discovered</span>
+                <span class="stat-value" id="stat-lore">0/12</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Secrets Found</span>
+                <span class="stat-value" id="stat-secrets">0/5</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Rooms Explored</span>
+                <span class="stat-value" id="stat-rooms">0</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Enemies Slain</span>
+                <span class="stat-value" id="stat-kills">0</span>
+            </div>
+        </div>
+        <button class="start-btn" onclick="restartGame()">BEGIN ANEW</button>
+    </div>
+
+    <script>
+        // ==================== GAME CONSTANTS ====================
+        const ROOM_WIDTH = 40;
+        const ROOM_HEIGHT = 25;
+        const TILE_SIZE = 16;
+        const CANVAS_WIDTH = ROOM_WIDTH * TILE_SIZE;
+        const CANVAS_HEIGHT = ROOM_HEIGHT * TILE_SIZE;
+
+        // ==================== LORE DATA ====================
+        // Surface lore - narrative, found in most rooms
+        const LORE_FINDINGS = [
+            {
+                id: 'origins',
+                title: 'THE FOUNDING',
+                text: 'In the Age of First Light, the Archive stood as memory itself. The Keepers recorded all, for knowledge is the only immortality we possess.',
+                room: 'start'
+            },
+            {
+                id: 'keepers',
+                title: 'THE KEEPERS',
+                text: 'They wore no crowns, sought no thrones. The Keepers served only truth. Or so we were taught...',
+                room: 'corridor'
+            },
+            {
+                id: 'awakening',
+                title: 'THE AWAKENING',
+                text: 'When the Veil thinned, something stirred in the depths. The Keepers said it was contained. They lied.',
+                room: 'chamber'
+            },
+            {
+                id: 'first_war',
+                title: 'THE SILENT WAR',
+                text: 'Not with swords did they battle, but with erasures. One by one, the truths were made to vanish.',
+                room: 'hall'
+            },
+            {
+                id: 'treatment',
+                title: 'THE GREAT TREATMENT',
+                text: 'They called it "cleansing." Thirty days of fire. The Archive burned for seven. And still they searched for more.',
+                room: 'archives'
+            },
+            {
+                id: 'survivors',
+                title: 'THOSE WHO REMEMBER',
+                text: 'A handful escaped the Treatment. They carry fragments now, hiding in shadowed places, passing whispers like grave-robbing thieves.',
+                room: 'sanctuary'
+            },
+            {
+                id: 'prophecy',
+                title: 'THE PROPHECY',
+                text: '"When the last Archive falls, when memory dies, the Hollow Crown shall reign." We thought it metaphor. We were wrong.',
+                room: 'throne'
+            },
+            {
+                id: 'secrets',
+                title: 'THE HIDDEN SCRIPT',
+                text: 'Beneath the official histories, scratches in the stone. The Keepers themselves wrote warnings to those who would come after.',
+                room: 'crypt'
+            }
+        ];
+
+        // SECRET lore - only found through exploration, reveals the truth
+        const SECRET_LORE = [
+            {
+                id: 'secret_1',
+                title: 'THE TRUTH: PART I',
+                text: 'They did not burn the Archive to destroy knowledge. They burned it to hide WHAT they had learned. The truth was too terrible.',
+                hint: 'Look where the light does not reach'
+            },
+            {
+                id: 'secret_2',
+                title: 'THE TRUTH: PART II',
+                text: 'The cataclysm was not a punishment. It was an experiment. The Keepers opened a door and could not close it.',
+                hint: 'In the deepest chamber, truth waits'
+            },
+            {
+                id: 'secret_3',
+                title: 'THE TRUTH: PART III',
+                text: 'We are not the first Archive. We are the seventh. Each was built atop the death of the last. Each truth was buried in blood.',
+                hint: 'Foundation holds memory'
+            },
+            {
+                id: 'secret_4',
+                title: 'THE TRUTH: PART IV',
+                text: 'The Hollow Crown is not a metaphor. It is a title. The one who sits upon the throne has no face. Has never had a face.',
+                hint: 'Behind the throne, behind the truth'
+            },
+            {
+                id: 'secret_5',
+                title: 'THE FINAL TRUTH',
+                text: 'You are not the first to enter seeking truth. You are the latest. And you will face the same choice: speak the lie, or burn with the truth.',
+                hint: 'The Archive remembers all'
+            }
+        ];
+
+        // ==================== ROOM GENERATION ====================
+        const ROOM_TYPES = {
+            start: {
+                name: 'The Entry Hall',
+                description: 'Dust motes dance in fractured light',
+                color: '#2a2520',
+                features: ['pillars', 'debris']
+            },
+            corridor: {
+                name: 'The Whispering Corridor',
+                description: 'The walls seem to breathe',
+                color: '#252220',
+                features: ['arches', 'cracks']
+            },
+            chamber: {
+                name: 'The Fallen Chamber',
+                description: 'Shadows pool in corners',
+                color: '#282420',
+                features: ['statues', 'rubble']
+            },
+            hall: {
+                name: 'The Grand Hall',
+                description: 'Greatness decays here',
+                color: '#2a2622',
+                features: ['columns', 'banners']
+            },
+            archives: {
+                name: 'The Burnt Archives',
+                description: 'Charred knowledge whispers',
+                color: '#201810',
+                features: ['shelves', 'ash']
+            },
+            sanctuary: {
+                name: 'The Sanctuary',
+                description: 'Still sacred, still silent',
+                color: '#222018',
+                features: ['altar', 'candles']
+            },
+            throne: {
+                name: 'The Hollow Throne',
+                description: 'Empty. Waiting.',
+                color: '#181210',
+                features: ['throne', 'broken']
+            },
+            crypt: {
+                name: 'The Forgotten Crypt',
+                description: 'The dead keep no secrets',
+                color: '#181510',
+                features: ['tomb', 'chains']
+            }
+        };
+
+        // ==================== GAME STATE ====================
+        let gameState = {
+            running: false,
+            paused: false,
+            player: null,
+            currentRoom: null,
+            roomMap: new Map(),
+            discoveredRooms: new Set(),
+            foundLore: new Set(),
+            foundSecrets: new Set(),
+            knowledgeLevel: 0,
+            roomsExplored: 0,
+            kills: 0,
+            enemies: [],
+            particles: [],
+            screenShake: 0,
+            lastMessage: '',
+            messageTimeout: null
+        };
+
+        // ==================== PLAYER CLASS ====================
+        class Player {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.width = 12;
+                this.height = 14;
+                this.vx = 0;
+                this.vy = 0;
+                this.speed = 2.5;
+                this.health = 100;
+                this.maxHealth = 100;
+                this.attacking = false;
+                this.attackTimer = 0;
+                this.attackCooldown = 0;
+                this.invincible = 0;
+                this.facing = 'right';
+                this.knowledgeGlow = 0;
+            }
+
+            update(dt) {
+                // Movement
+                this.vx = 0;
+                this.vy = 0;
+                
+                if (keys['KeyW'] || keys['ArrowUp']) this.vy = -this.speed;
+                if (keys['KeyS'] || keys['ArrowDown']) this.vy = this.speed;
+                if (keys['KeyA'] || keys['ArrowLeft']) { this.vx = -this.speed; this.facing = 'left'; }
+                if (keys['KeyD'] || keys['ArrowRight']) { this.vx = this.speed; this.facing = 'right'; }
+                
+                // Normalize diagonal movement
+                if (this.vx !== 0 && this.vy !== 0) {
+                    this.vx *= 0.707;
+                    this.vy *= 0.707;
+                }
+                
+                // Apply movement with collision
+                let newX = this.x + this.vx;
+                let newY = this.y + this.vy;
+                
+                if (!checkCollision(newX, this.y, this.width, this.height)) {
+                    this.x = newX;
+                }
+                if (!checkCollision(this.x, newY, this.width, this.height)) {
+                    this.y = newY;
+                }
+                
+                // Bounds
+                this.x = Math.max(8, Math.min(CANVAS_WIDTH - this.width - 8, this.x));
+                this.y = Math.max(8, Math.min(CANVAS_HEIGHT - this.height - 8, this.y));
+                
+                // Attack
+                if (this.attackTimer > 0) this.attackTimer -= dt;
+                if (this.attackCooldown > 0) this.attackCooldown -= dt;
+                if (this.invincible > 0) this.invincible -= dt;
+                
+                // Attack input
+                if (keys['KeyE'] && this.attackCooldown <= 0) {
+                    this.attacking = true;
+                    this.attackTimer = 0.15;
+                    this.attackCooldown = 0.4;
+                    
+                    // Create attack particles
+                    let attackX = this.facing === 'right' ? this.x + this.width + 4 : this.x - 20;
+                    for (let i = 0; i < 5; i++) {
+                        gameState.particles.push({
+                            x: attackX + Math.random() * 12,
+                            y: this.y + this.height / 2 + (Math.random() - 0.5) * 12,
+                            vx: (this.facing === 'right' ? 4 : -4) + (Math.random() - 0.5) * 2,
+                            vy: (Math.random() - 0.5) * 3,
+                            life: 0.3,
+                            maxLife: 0.3,
+                            color: '#c9a227',
+                            size: 3
+                        });
+                    }
+                    
+                    // Check enemy hits
+                    gameState.enemies.forEach(enemy => {
+                        let dx = (enemy.x + enemy.width/2) - (attackX + 10);
+                        let dy = (enemy.y + enemy.height/2) - (this.y + this.height/2);
+                        if (Math.abs(dx) < 25 && Math.abs(dy) < 20) {
+                            enemy.takeDamage(35);
+                            gameState.screenShake = 0.1;
+                        }
+                    });
+                }
+                
+                // Update knowledge glow
+                if (this.knowledgeGlow > 0) {
+                    this.knowledgeGlow -= dt * 2;
+                }
+            }
+
+            draw(ctx) {
+                ctx.save();
+                
+                let drawX = this.x;
+                let drawY = this.y;
+                
+                // Attack animation offset
+                if (this.attackTimer > 0) {
+                    drawX += this.facing === 'right' ? 4 : -4;
+                }
+                
+                // Invincibility flash
+                if (this.invincible > 0 && Math.floor(this.invincible * 10) % 2 === 0) {
+                    ctx.globalAlpha = 0.5;
+                }
+                
+                // Body
+                ctx.fillStyle = '#e8e4dc';
+                ctx.fillRect(drawX + 3, drawY + 2, 6, 10);
+                
+                // Head
+                ctx.fillStyle = '#d4c4a8';
+                ctx.beginPath();
+                ctx.arc(drawX + 6, drawY + 3, 3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Robe/Cloak
+                ctx.fillStyle = '#4a4540';
+                ctx.beginPath();
+                ctx.moveTo(drawX + 2, drawY + 10);
+                ctx.lineTo(drawX + 10, drawY + 10);
+                ctx.lineTo(drawX + 11, drawY + 14);
+                ctx.lineTo(drawX + 1, drawY + 14);
+                ctx.closePath();
+                ctx.fill();
+                
+                // Belt
+                ctx.fillStyle = '#8a7530';
+                ctx.fillRect(drawX + 2, drawY + 9, 8, 2);
+                
+                // Knowledge glow
+                if (this.knowledgeGlow > 0) {
+                    ctx.shadowColor = '#2d5a5a';
+                    ctx.shadowBlur = 15 * this.knowledgeGlow;
+                    ctx.strokeStyle = `rgba(45, 90, 90, ${this.knowledgeGlow})`;
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(drawX - 2, drawY - 2, this.width + 4, this.height + 4);
+                    ctx.shadowBlur = 0;
+                }
+                
+                // Weapon
+                if (keys['KeyE'] && this.attackTimer > 0) {
+                    ctx.fillStyle = '#c9a227';
+                    let bladeX = this.facing === 'right' ? drawX + 10 : drawX - 6;
+                    ctx.fillRect(bladeX, drawY + 5, 8, 2);
+                    ctx.fillStyle = '#8a7530';
+                    ctx.fillRect(this.facing === 'right' ? bladeX : bladeX - 2, drawY + 4, 2, 4);
+                }
+                
+                ctx.restore();
+            }
+
+            takeDamage(amount) {
+                if (this.invincible <= 0) {
+                    this.health -= amount;
+                    this.invincible = 0.8;
+                    gameState.screenShake = 0.2;
+                    
+                    // Blood particles
+                    for (let i = 0; i < 8; i++) {
+                        gameState.particles.push({
+                            x: this.x + this.width/2,
+                            y: this.y + this.height/2,
+                            vx: (Math.random() - 0.5) * 4,
+                            vy: (Math.random() - 0.5) * 4,
+                            life: 0.5,
+                            maxLife: 0.5,
+                            color: '#8b2942',
+                            size: 2
+                        });
+                    }
+                    
+                    showMessage('VITALITY UNDONE');
+                    
+                    if (this.health <= 0) {
+                        endGame();
+                    }
+                }
+            }
+
+            heal(amount) {
+                this.health = Math.min(this.maxHealth, this.health + amount);
+                updateHUD();
+            }
+        }
+
+        // ==================== ENEMY CLASS ====================
+        class Enemy {
+            constructor(x, y, type) {
+                this.x = x;
+                this.y = y;
+                this.type = type;
+                this.width = 10;
+                this.height = 12;
+                
+                if (type === 'shadow') {
+                    this.health = 40;
+                    this.speed = 1.2;
+                    this.damage = 15;
+                    this.cooldown = 1.2;
+                    this.color = '#2a1a20';
+                } else if (type === 'wraith') {
+                    this.health = 60;
+                    this.speed = 1.5;
+                    this.damage = 20;
+                    this.cooldown = 0.8;
+                    this.color = '#1a252a';
+                } else if (type === 'guardian') {
+                    this.health = 100;
+                    this.speed = 0.8;
+                    this.damage = 30;
+                    this.cooldown = 1.5;
+                    this.color = '#3a2a1a';
+                    this.width = 14;
+                    this.height = 18;
+                }
+                
+                this.vx = 0;
+                this.vy = 0;
+                this.attackTimer = 0;
+                this.state = 'chase';
+                this.hitTimer = 0;
+            }
+
+            update(dt) {
+                if (this.attackTimer > 0) this.attackTimer -= dt;
+                if (this.hitTimer > 0) this.hitTimer -= dt;
+                
+                // Only chase if player is in same room
+                if (this.state === 'dead') return;
+                
+                let player = gameState.player;
+                if (!player) return;
+                
+                let dx = player.x - this.x;
+                let dy = player.y - this.y;
+                let dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist < 120) {
+                    // Chase
+                    this.vx = (dx / dist) * this.speed;
+                    this.vy = (dy / dist) * this.speed;
+                    
+                    let newX = this.x + this.vx;
+                    let newY = this.y + this.vy;
+                    
+                    if (!checkCollision(newX, this.y, this.width, this.height)) {
+                        this.x = newX;
+                    }
+                    if (!checkCollision(this.x, newY, this.width, this.height)) {
+                        this.y = newY;
+                    }
+                    
+                    // Attack
+                    if (dist < 25 && this.attackTimer <= 0) {
+                        this.attackTimer = this.cooldown;
+                        player.takeDamage(this.damage);
+                    }
+                }
+            }
+
+            draw(ctx) {
+                if (this.state === 'dead') return;
+                
+                ctx.save();
+                
+                if (this.hitTimer > 0) {
+                    ctx.fillStyle = '#ffffff';
+                } else {
+                    ctx.fillStyle = this.color;
+                }
+                
+                // Shadow
+                ctx.globalAlpha = 0.8;
+                let offset = Math.sin(Date.now() / 200) * 2;
+                ctx.fillRect(this.x + 2 + offset, this.y + this.height - 2, this.width - 4, 3);
+                ctx.globalAlpha = 1;
+                
+                // Body
+                ctx.fillRect(this.x + 2, this.y + 4, this.width - 4, this.height - 6);
+                
+                // Head
+                ctx.beginPath();
+                ctx.arc(this.x + this.width/2, this.y + 3, 3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Eyes
+                ctx.fillStyle = '#8b2942';
+                ctx.fillRect(this.x + 3, this.y + 2, 1.5, 1.5);
+                ctx.fillRect(this.x + this.width - 4.5, this.y + 2, 1.5, 1.5);
+                
+                ctx.restore();
+            }
+
+            takeDamage(amount) {
+                this.health -= amount;
+                this.hitTimer = 0.1;
+                
+                // Hit particles
+                for (let i = 0; i < 4; i++) {
+                    gameState.particles.push({
+                        x: this.x + this.width/2,
+                        y: this.y + this.height/2,
+                        vx: (Math.random() - 0.5) * 3,
+                        vy: (Math.random() - 0.5) * 3,
+                        life: 0.3,
+                        maxLife: 0.3,
+                        color: this.color,
+                        size: 2
+                    });
+                }
+                
+                if (this.health <= 0) {
+                    this.state = 'dead';
+                    gameState.kills++;
+                    
+                    // Death particles
+                    for (let i = 0; i < 10; i++) {
+                        gameState.particles.push({
+                            x: this.x + this.width/2,
+                            y: this.y + this.height/2,
+                            vx: (Math.random() - 0.5) * 5,
+                            vy: (Math.random() - 0.5) * 5,
+                            life: 0.8,
+                            maxLife: 0.8,
+                            color: this.color,
+                            size: 4
+                        });
+                    }
+                }
+            }
+        }
+
+        // ==================== ROOM GENERATION ====================
+        function generateRoom(roomId, type) {
+            let room = {
+                id: roomId,
+                type: type,
+                tiles: [],
+                items: [],
+                enemies: [],
+                lore: null,
+                secretLore: null,
+                visited: false,
+                ...ROOM_TYPES[type]
+            };
+            
+            // Generate tiles (walls and floor)
+            for (let y = 0; y < ROOM_HEIGHT; y++) {
+                room.tiles[y] = [];
+                for (let x = 0; x < ROOM_WIDTH; x++) {
+                    // Border walls
+                    if (x === 0 || x === ROOM_WIDTH - 1 || y === 0 || y === ROOM_HEIGHT - 1) {
+                        room.tiles[y][x] = { type: 'wall', variant: Math.random() > 0.7 ? 1 : 0 };
+                    } else {
+                        room.tiles[y][x] = { type: 'floor', variant: Math.random() > 0.9 ? 1 : 0 };
+                    }
+                }
+            }
+            
+            // Add features based on room type
+            if (type === 'start' || type === 'corridor') {
+                // Add pillars
+                for (let i = 0; i < 3; i++) {
+                    let px = 10 + i * 10;
+                    addFeature(room, px, 8, 'pillar');
+                    addFeature(room, px, 16, 'pillar');
+                }
+            } else if (type === 'chamber') {
+                addFeature(room, 8, 6, 'statue_left');
+                addFeature(room, 30, 6, 'statue_right');
+            } else if (type === 'throne') {
+                addFeature(room, 18, 5, 'throne');
+            } else if (type === 'crypt') {
+                addFeature(room, 10, 10, 'tomb');
+                addFeature(room, 28, 10, 'tomb');
+                // Secret lore here
+                room.secretLore = SECRET_LORE[3];
+            }
+            
+            // Add enemies based on room depth and type
+            let enemyCount = Math.floor(Math.random() * 3) + 1;
+            if (type === 'throne') {
+                room.enemies.push(new Enemy(CANVAS_WIDTH/2, CANVAS_HEIGHT/2, 'guardian'));
+                enemyCount = 0;
+            } else if (type === 'archives' || type === 'crypt') {
+                enemyCount = Math.floor(Math.random() * 2) + 2;
+            }
+            
+            for (let i = 0; i < enemyCount; i++) {
+                let ex = 40 + Math.random() * (CANVAS_WIDTH - 80);
+                let ey = 60 + Math.random() * (CANVAS_HEIGHT - 120);
+                let type = Math.random() > 0.6 ? 'wraith' : 'shadow';
+                room.enemies.push(new Enemy(ex, ey, type));
+            }
+            
+            // Add lore (not in start room)
+            if (type !== 'start') {
+                let availableLore = LORE_FINDINGS.filter(l => l.room === type);
+                if (availableLore.length > 0 && Math.random() > 0.4) {
+                    room.lore = availableLore[Math.floor(Math.random() * availableLore.length)];
+                }
+                
+                // Also add chamber lore for transitional rooms
+                if (type === 'chamber' && Math.random() > 0.5) {
+                    let extraLore = { id: 'treatment', title: 'THE GREAT TREATMENT', text: 'They called it "cleansing." Thirty days of fire. The Archive burned for seven. And still they searched for more.', room: 'chamber' };
+                    if (!room.lore) room.lore = extraLore;
+                }
+                
+                // Add sanctuary lore
+                if (type === 'sanctuary' && Math.random() > 0.5) {
+                    let extraLore = { id: 'survivors', title: 'THOSE WHO REMEMBER', text: 'A handful escaped the Treatment. They carry fragments now, hiding in shadowed places, passing whispers like grave-robbing thieves.', room: 'sanctuary' };
+                    if (!room.lore) room.lore = extraLore;
+                }
+                
+                // Add throne lore
+                if (type === 'throne' && Math.random() > 0.5) {
+                    let extraLore = { id: 'prophecy', title: 'THE PROPHECY', text: '"When the last Archive falls, when memory dies, the Hollow Crown shall reign." We thought it metaphor. We were wrong.', room: 'throne' };
+                    if (!room.lore) room.lore = extraLore;
+                }
+                
+                // Add archives lore
+                if (type === 'archives' && Math.random() > 0.5) {
+                    let extraLore = { id: 'darkness', title: 'THE DARKNESS', text: 'Beyond the fire, beyond the lies, there is only the silence of forgotten things. And in that silence, something waits.', room: 'archives' };
+                    if (!room.lore) room.lore = extraLore;
+                }
+            }
+            
+            // Add secret lore rooms
+            if (type === 'crypt') {
+                room.secretLore = SECRET_LORE[3];
+            } else if (type === 'throne') {
+                room.secretLore = SECRET_LORE[4];
+            } else if (Math.random() > 0.9) {
+                // Rare secret lore in any room
+                let secretIdx = Math.floor(Math.random() * SECRET_LORE.length);
+                room.secretLore = SECRET_LORE[secretIdx];
+            }
+            
+            // Add items
+            if (Math.random() > 0.7) {
+                room.items.push({ x: 20 + Math.random() * (CANVAS_WIDTH - 40), y: 20 + Math.random() * (CANVAS_HEIGHT - 40), type: 'health' });
+            }
+            if (Math.random() > 0.85) {
+                room.items.push({ x: 20 + Math.random() * (CANVAS_WIDTH - 40), y: 20 + Math.random() * (CANVAS_HEIGHT - 40), type: 'knowledge' });
+            }
+            
+            return room;
+        }
+
+        function addFeature(room, x, y, feature) {
+            if (feature === 'pillar') {
+                for (let dy = 0; dy < 4; dy++) {
+                    for (let dx = 0; dx < 2; dx++) {
+                        if (x + dx < ROOM_WIDTH - 1 && y + dy < ROOM_HEIGHT - 1) {
+                            room.tiles[y + dy][x + dx] = { type: 'wall', variant: 2 };
+                        }
+                    }
+                }
+            } else if (feature === 'statue_left' || feature === 'statue_right') {
+                for (let dy = 0; dy < 5; dy++) {
+                    for (let dx = 0; dx < 3; dx++) {
+                        if (x + dx < ROOM_WIDTH - 1 && y + dy < ROOM_HEIGHT - 1) {
+                            room.tiles[y + dy][x + dx] = { type: 'wall', variant: 2 };
+                        }
+                    }
+                }
+            } else if (feature === 'throne') {
+                for (let dy = 0; dy < 6; dy++) {
+                    for (let dx = 0; dx < 4; dx++) {
+                        if (x + dx < ROOM_WIDTH - 1 && y + dy < ROOM_HEIGHT - 1) {
+                            room.tiles[y + dy][x + dx] = { type: 'wall', variant: 2 };
+                        }
+                    }
+                }
+            } else if (feature === 'tomb') {
+                for (let dy = 0; dy < 3; dy++) {
+                    for (let dx = 0; dx < 4; dx++) {
+                        if (x + dx < ROOM_WIDTH - 1 && y + dy < ROOM_HEIGHT - 1) {
+                            room.tiles[y + dy][x + dx] = { type: 'wall', variant: 1 };
+                        }
+                    }
+                }
+            }
+        }
+
+        // ==================== COLLISION ====================
+        function checkCollision(x, y, w, h) {
+            let tx1 = Math.floor(x / TILE_SIZE);
+            let ty1 = Math.floor(y / TILE_SIZE);
+            let tx2 = Math.floor((x + w) / TILE_SIZE);
+            let ty2 = Math.floor((y + h) / TILE_SIZE);
+            
+            let room = gameState.currentRoom;
+            if (!room) return false;
+            
+            for (let ty = ty1; ty <= ty2; ty++) {
+                for (let tx = tx1; tx <= tx2; tx++) {
+                    if (ty >= 0 && ty < ROOM_HEIGHT && tx >= 0 && tx < ROOM_WIDTH) {
+                        if (room.tiles[ty] && room.tiles[ty][tx] && room.tiles[ty][tx].type === 'wall') {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        // ==================== INPUT ====================
+        let keys = {};
+        
+        window.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            
+            if (e.code === 'Escape' && gameState.running && !gameState.paused) {
+                pauseGame();
+            } else if (e.code === 'Escape' && gameState.paused) {
+                resumeGame();
+            }
+            
+            if (e.code === 'Space' && gameState.running && !gameState.paused) {
+                tryInteract();
+            }
+        });
+        
+        window.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+
+        // ==================== GAME LOGIC ====================
+        function startGame() {
+            document.getElementById('title-screen').style.display = 'none';
+            document.getElementById('game-ui').style.display = 'block';
+            
+            // Initialize canvas
+            let canvas = document.getElementById('game-canvas');
+            canvas.width = CANVAS_WIDTH;
+            canvas.height = CANVAS_HEIGHT;
+            
+            // Initialize minimap
+            let minimap = document.getElementById('minimap-canvas');
+            minimap.width = 120;
+            minimap.height = 120;
+            
+            // Reset game state
+            gameState = {
+                running: true,
+                paused: false,
+                player: new Player(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2),
+                currentRoom: null,
+                roomMap: new Map(),
+                discoveredRooms: new Set(),
+                foundLore: new Set(),
+                foundSecrets: new Set(),
+                knowledgeLevel: 0,
+                roomsExplored: 0,
+                kills: 0,
+                enemies: [],
+                particles: [],
+                screenShake: 0,
+                lastMessage: '',
+                messageTimeout: null
+            };
+            
+            // Create starting room
+            loadRoom('start_0', 'start');
+            
+            // Update HUD
+            updateHUD();
+            
+            // Start game loop
+            requestAnimationFrame(gameLoop);
+            
+            // Show intro message
+            setTimeout(() => showMessage('FIND KNOWLEDGE TO UNLOCK TRUTH'), 500);
+        }
+
+        function loadRoom(roomId, type) {
+            // Check if room exists
+            if (!gameState.roomMap.has(roomId)) {
+                gameState.roomMap.set(roomId, generateRoom(roomId, type));
+            }
+            
+            let oldRoom = gameState.currentRoom;
+            gameState.currentRoom = gameState.roomMap.get(roomId);
+            gameState.discoveredRooms.add(roomId);
+            gameState.roomsExplored++;
+            
+            // Respawn enemies from current room
+            gameState.enemies = gameState.currentRoom.enemies.filter(e => e.state !== 'dead');
+            
+            // Keep player positioned entering new area
+            if (oldRoom) {
+                // If came from left
+                if (gameState.player.x < 30) {
+                    gameState.player.x = CANVAS_WIDTH - 40;
+                }
+                // If came from right
+                else if (gameState.player.x > CANVAS_WIDTH - 30) {
+                    gameState.player.x = 40;
+                }
+                // If came from top
+                else if (gameState.player.y < 30) {
+                    gameState.player.y = CANVAS_HEIGHT - 50;
+                }
+                // If came from bottom
+                else if (gameState.player.y > CANVAS_HEIGHT - 30) {
+                    gameState.player.y = 50;
+                }
+            }
+            
+            // Pre-register all room types at game start
+            let rooms = [
+                ['corridor_1', 'corridor'],
+                ['chamber_up', 'chamber'],
+                ['hall_down', 'hall'],
+                ['chamber_above', 'chamber'],
+                ['archives_right', 'archives'],
+                ['throne_deep', 'throne'],
+                ['sanctuary_left', 'sanctuary'],
+                ['crypt_top', 'crypt']
+            ];
+            rooms.forEach(r => {
+                gameState.roomMap.set(r[0], generateRoom(r[0], r[1]));
+            });
+            
+            // Show room name
+            showMessage(gameState.currentRoom.name);
+            
+            // Check for lore
+            if (gameState.currentRoom.lore && !gameState.foundLore.has(gameState.currentRoom.lore.id)) {
+                setTimeout(() => showLorePanel(gameState.currentRoom.lore), 1500);
+            }
+            
+            // Check for secret lore
+            if (gameState.currentRoom.secretLore && !gameState.foundSecrets.has(gameState.currentRoom.secretLore.id)) {
+                setTimeout(() => {
+                    showMessage('SOMETHING HIDDEN...');
+                    showLorePanel(gameState.currentRoom.secretLore, true);
+                }, 2000);
+            }
+            
+            updateHUD();
+        }
+
+        function tryInteract() {
+            // Check for nearby items
+            let room = gameState.currentRoom;
+            if (!room) return;
+            
+            let player = gameState.player;
+            
+            // Check items
+            for (let i = room.items.length - 1; i >= 0; i--) {
+                let item = room.items[i];
+                let dx = (item.x + 8) - (player.x + player.width/2);
+                let dy = (item.y + 8) - (player.y + player.height/2);
+                
+                if (Math.abs(dx) < 20 && Math.abs(dy) < 20) {
+                    if (item.type === 'health') {
+                        player.heal(30);
+                        room.items.splice(i, 1);
+                        showMessage('VITALITY RESTORED');
+                    } else if (item.type === 'knowledge') {
+                        gameState.knowledgeLevel++;
+                        gameState.player.knowledgeGlow = 1;
+                        room.items.splice(i, 1);
+                        showMessage('KNOWLEDGE GAINED');
+                        
+                        // Check for new secrets
+                        checkKnowledgeLevel();
+                    }
+                    return;
+                }
+            }
+        }
+
+        function checkKnowledgeLevel() {
+            // Unlock secrets based on knowledge level
+            if (gameState.knowledgeLevel >= 3 && gameState.foundSecrets.size < 1) {
+                showAchievement('TRUTH SEEKS', 'You have learned enough to perceive the hidden');
+            } else if (gameState.knowledgeLevel >= 6 && gameState.foundSecrets.size < 2) {
+                showAchievement('DEEPER TRUTH', 'More knowledge opens more eyes');
+            } else if (gameState.knowledgeLevel >= 10 && gameState.foundSecrets.size < 3) {
+                showAchievement('THE WEIGHT', 'Perhaps ignorance was kinder');
+            }
+        }
+
+        function updateHUD() {
+            // Health bar
+            let healthPercent = gameState.player ? (gameState.player.health / gameState.player.maxHealth) * 100 : 100;
+            document.getElementById('health-fill').style.width = healthPercent + '%';
+            
+            // Knowledge markers
+            let markersContainer = document.getElementById('knowledge-markers');
+            markersContainer.innerHTML = '';
+            for (let i = 0; i < 5; i++) {
+                let dot = document.createElement('div');
+                dot.className = 'knowledge-dot' + (i < gameState.knowledgeLevel ? ' found' : '');
+                markersContainer.appendChild(dot);
+            }
+        }
+
+        function showMessage(text) {
+            if (gameState.lastMessage === text) return;
+            
+            let messageEl = document.getElementById('message');
+            messageEl.textContent = text;
+            messageEl.classList.add('show');
+            
+            clearTimeout(gameState.messageTimeout);
+            gameState.messageTimeout = setTimeout(() => {
+                messageEl.classList.remove('show');
+            }, 2000);
+            
+            gameState.lastMessage = text;
+        }
+
+        function showLorePanel(lore, isSecret = false) {
+            let panel = document.getElementById('lore-panel');
+            document.getElementById('lore-title').textContent = lore.title;
+            
+            let textEl = document.getElementById('lore-text');
+            textEl.textContent = lore.text;
+            textEl.className = 'lore-text' + (isSecret ? ' secret' : '');
+            
+            panel.classList.add('active');
+            
+            // Track discovery
+            if (isSecret) {
+                gameState.foundSecrets.add(lore.id);
+            } else {
+                gameState.foundLore.add(lore.id);
+            }
+            
+            setTimeout(() => panel.classList.remove('active'), 5000);
+        }
+
+        function showLore() {
+            let allLore = [...Array.from(gameState.foundLore), ...Array.from(gameState.foundSecrets)];
+            if (allLore.length === 0) {
+                showMessage('NO KNOWLEDGE YET FOUND');
+                return;
+            }
+            
+            let panel = document.getElementById('lore-panel');
+            document.getElementById('lore-title').textContent = 'YOUR DISCOVERIES';
+            document.getElementById('lore-text').textContent = `You have gathered ${allLore.length} fragments of truth. Keep searching.`;
+            panel.classList.add('active');
+            
+            setTimeout(() => panel.classList.remove('active'), 3000);
+        }
+
+        function showAchievement(title, desc) {
+            let popup = document.getElementById('achievement-popup');
+            document.getElementById('achievement-title').textContent = title;
+            document.getElementById('achievement-desc').textContent = desc;
+            popup.classList.add('show');
+            
+            setTimeout(() => popup.classList.remove('show'), 3000);
+        }
+
+        function pauseGame() {
+            gameState.paused = true;
+            document.getElementById('pause-menu').classList.add('show');
+        }
+
+        function resumeGame() {
+            gameState.paused = false;
+            document.getElementById('pause-menu').classList.remove('show');
+            requestAnimationFrame(gameLoop);
+        }
+
+        function restartGame() {
+            location.reload();
+        }
+
+        function endGame() {
+            gameState.running = false;
+            document.getElementById('game-ui').style.display = 'none';
+            document.getElementById('end-screen').classList.add('show');
+            document.getElementById('pause-menu').classList.remove('show');
+            
+            // Determine ending
+            let secretsFound = gameState.foundSecrets.size;
+            let loreFound = gameState.foundLore.size;
+            
+            let endTitle, endSubtitle;
+            
+            if (secretsFound >= 5) {
+                endTitle = 'THE TRUTH IS KNOWN';
+                endSubtitle = 'You have seen the Archive\'s darkest secret. Now you must choose.';
+            } else if (secretsFound >= 3) {
+                endTitle = 'PARTIAL UNDERSTANDING';
+                endSubtitle = 'You found some truth. But the deepest secrets remain hidden.';
+            } else {
+                endTitle = 'FORGOTTEN LIKE THE REST';
+                endSubtitle = 'You entered the Archive, but left without knowing why it burned.';
+            }
+            
+            document.getElementById('end-title').textContent = endTitle;
+            document.getElementById('end-subtitle').textContent = endSubtitle;
+            
+            document.getElementById('stat-lore').textContent = loreFound + '/8';
+            document.getElementById('stat-secrets').textContent = secretsFound + '/5';
+            document.getElementById('stat-rooms').textContent = gameState.roomsExplored;
+            document.getElementById('stat-kills').textContent = gameState.kills;
+        }
+
+        // ==================== RENDERING ====================
+        function render() {
+            let canvas = document.getElementById('game-canvas');
+            let ctx = canvas.getContext('2d');
+            let room = gameState.currentRoom;
+            
+            // Screen shake
+            ctx.save();
+            if (gameState.screenShake > 0) {
+                ctx.translate(
+                    (Math.random() - 0.5) * 10 * gameState.screenShake,
+                    (Math.random() - 0.5) * 10 * gameState.screenShake
+                );
+                gameState.screenShake -= 0.02;
+            }
+            
+            // Background
+            ctx.fillStyle = room ? room.color : '#141210';
+            ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+            
+            if (!room) {
+                ctx.restore();
+                return;
+            }
+            
+            // Draw tiles
+            for (let y = 0; y < ROOM_HEIGHT; y++) {
+                for (let x = 0; x < ROOM_WIDTH; x++) {
+                    let tile = room.tiles[y][x];
+                    let tx = x * TILE_SIZE;
+                    let ty = y * TILE_SIZE;
+                    
+                    if (tile.type === 'wall') {
+                        // Wall shading
+                        let shade = 0.7 + (y / ROOM_HEIGHT) * 0.3;
+                        if (tile.variant === 1) {
+                            ctx.fillStyle = `rgb(${Math.floor(40 * shade)}, ${Math.floor(35 * shade)}, ${Math.floor(30 * shade)})`;
+                        } else if (tile.variant === 2) {
+                            ctx.fillStyle = `rgb(${Math.floor(60 * shade)}, ${Math.floor(50 * shade)}, ${Math.floor(35 * shade)})`;
+                        } else {
+                            ctx.fillStyle = `rgb(${Math.floor(45 * shade)}, ${Math.floor(40 * shade)}, ${Math.floor(35 * shade)})`;
+                        }
+                        ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
+                    } else {
+                        // Floor detail
+                        if (tile.variant === 1) {
+                            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+                            ctx.fillRect(tx, ty, TILE_SIZE, TILE_SIZE);
+                        }
+                    }
+                }
+            }
+            
+            // Draw items
+            room.items.forEach(item => {
+                if (item.type === 'health') {
+                    ctx.fillStyle = '#8b2942';
+                    ctx.beginPath();
+                    ctx.arc(item.x + 8, item.y + 8, 6, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 10px serif';
+                    ctx.fillText('+', item.x + 4, item.y + 11);
+                } else if (item.type === 'knowledge') {
+                    ctx.fillStyle = '#2d5a5a';
+                    ctx.beginPath();
+                    ctx.arc(item.x + 8, item.y + 8, 6, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 8px serif';
+                    ctx.fillText('?', item.x + 5, item.y + 11);
+                }
+            });
+            
+            // Draw enemies
+            gameState.enemies.forEach(enemy => enemy.draw(ctx));
+            
+            // Draw player
+            if (gameState.player) {
+                gameState.player.draw(ctx);
+            }
+            
+            // Draw particles
+            gameState.particles.forEach(p => {
+                ctx.globalAlpha = p.life / p.maxLife;
+                ctx.fillStyle = p.color;
+                ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
+            });
+            ctx.globalAlpha = 1;
+            
+            // Update particles
+            gameState.particles = gameState.particles.filter(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= 0.016;
+                return p.life > 0;
+            });
+            
+            // Render minimap
+            renderMinimap();
+            
+            ctx.restore();
+        }
+
+        function renderMinimap() {
+            let canvas = document.getElementById('minimap-canvas');
+            let ctx = canvas.getContext('2d');
+            
+            ctx.fillStyle = '#0a0908';
+            ctx.fillRect(0, 0, 120, 120);
+            
+            // Draw room positions
+            let scale = 8;
+            gameState.roomMap.forEach((room, id) => {
+                let parts = id.split('_');
+                let roomX = parseInt(parts[1]) * 60 + 60;
+                let roomY = 60;
+                
+                ctx.fillStyle = 'rgba(201, 162, 39, 0.3)';
+                ctx.fillRect(roomX * scale / 10, roomY * scale / 10, scale, scale);
+            });
+            
+            // Draw player on minimap
+            if (gameState.player) {
+                let px = (gameState.player.x / CANVAS_WIDTH) * 110 + 5;
+                let py = (gameState.player.y / CANVAS_HEIGHT) * 110 + 5;
+                
+                ctx.fillStyle = '#c9a227';
+                ctx.beginPath();
+                ctx.arc(px, py, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // ==================== GAME LOOP ====================
+        let lastTime = 0;
+        
+        function gameLoop(timestamp) {
+            if (!gameState.running) return;
+            if (gameState.paused) return;
+            
+            let dt = Math.min((timestamp - lastTime) / 1000, 0.05);
+            lastTime = timestamp;
+            
+            // Update player
+            if (gameState.player) {
+                gameState.player.update(dt);
+                
+                // Check room transitions
+                let px = gameState.player.x;
+                let py = gameState.player.y;
+                
+                if (px < 10 && gameState.discoveredRooms.has('start_0')) {
+                    loadRoom('start_0', 'start');
+                } else if (px > CANVAS_WIDTH - 10 && !gameState.discoveredRooms.has('corridor_1')) {
+                    loadRoom('corridor_1', 'corridor');
+                } else if (py < 10 && !gameState.discoveredRooms.has('chamber_up')) {
+                    loadRoom('chamber_up', 'chamber');
+                } else if (py > CANVAS_HEIGHT - 10 && !gameState.discoveredRooms.has('hall_down')) {
+                    loadRoom('hall_down', 'hall');
+                }
+                
+                // Explore more rooms - unlock based on knowledge level
+                if (gameState.knowledgeLevel >= 3 && py < 10 && !gameState.discoveredRooms.has('chamber_above')) {
+                    loadRoom('chamber_above', 'chamber');
+                }
+                if (gameState.knowledgeLevel >= 4 && px > CANVAS_WIDTH - 10 && !gameState.discoveredRooms.has('archives_right')) {
+                    loadRoom('archives_right', 'archives');
+                }
+                if (gameState.knowledgeLevel >= 5 && py > CANVAS_HEIGHT - 10 && !gameState.discoveredRooms.has('throne_deep')) {
+                    loadRoom('throne_deep', 'throne');
+                }
+                if (gameState.knowledgeLevel >= 7 && px < 10 && !gameState.discoveredRooms.has('sanctuary_left')) {
+                    loadRoom('sanctuary_left', 'sanctuary');
+                }
+                if (gameState.knowledgeLevel >= 9 && py < 10 && !gameState.discoveredRooms.has('crypt_top')) {
+                    loadRoom('crypt_top', 'crypt');
+                }
+            }
+            
+            // Update enemies
+            gameState.enemies.forEach(enemy => enemy.update(dt));
+            
+            // Render
+            render();
+            
+            requestAnimationFrame(gameLoop);
+        }
+    </script>
+</body>
+</html>
